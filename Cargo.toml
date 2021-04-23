@@ -1,0 +1,11 @@
+[package]
+name = "sudoku-refactor"
+version = "0.1.0"
+authors = ["Kieran Griffiths <griffk04@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.8.3"
+itertools = "0.10.0"
