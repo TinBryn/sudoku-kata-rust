@@ -3,10 +3,9 @@ use std::slice::Iter;
 use rand::prelude::ThreadRng;
 use rand::Rng;
 
-
 #[derive(Clone)]
 pub struct Board {
-    pub state: Vec<usize>
+    pub state: Vec<usize>,
 }
 
 impl Board {
@@ -55,23 +54,13 @@ impl Board {
         let board_argument = &board;
         let lines = board_argument.iter().map(|v| v.iter().collect::<String>());
 
-        let mut result = lines.fold(String::new(), |acc, line| {
-            let mut acc = acc;
-            acc.push('\n');
-            acc.push_str(line.as_str());
-            acc
-        });
-
-        result.push('\n');
-
-        result
+        lines.fold(String::new(), |acc, line| format!("{}\n{}", acc, line))
     }
 
     pub fn code(&self) -> String {
         self.iter().map(|i| i.to_string()).collect()
     }
 }
-
 
 impl std::ops::Index<usize> for Board {
     type Output = usize;
@@ -130,7 +119,13 @@ impl Stacks {
     }
 
     pub fn do_move(&mut self) -> Commands {
-        let State { state: current_state, row_index: row_to_move, col_index: col_to_move, used_digits, last_digit: digit_to_move } = self.last_mut().unwrap();
+        let State {
+            state: current_state,
+            row_index: row_to_move,
+            col_index: col_to_move,
+            used_digits,
+            last_digit: digit_to_move,
+        } = self.last_mut().unwrap();
 
         let current_state_index = 9 * *row_to_move + *col_to_move;
 
@@ -160,7 +155,13 @@ impl Stacks {
     }
 
     pub fn do_move_2(&mut self) -> Commands {
-        let State { state: current_state, row_index: row_to_move, col_index: col_to_move, used_digits, last_digit: digit_to_move } = self.last_mut().unwrap();
+        let State {
+            state: current_state,
+            row_index: row_to_move,
+            col_index: col_to_move,
+            used_digits,
+            last_digit: digit_to_move,
+        } = self.last_mut().unwrap();
         let current_state_index = 9 * *row_to_move + *col_to_move;
 
         let mut moved_to_digit = *digit_to_move + 1;
@@ -196,7 +197,13 @@ impl Stacks {
         Commands::Move // Always try to move after collapse
     }
 
-    fn check_digits_used(current_state: &Board, row: usize, col: usize, block_row: usize, block_col: usize) -> Vec<bool> {
+    fn check_digits_used(
+        current_state: &Board,
+        row: usize,
+        col: usize,
+        block_row: usize,
+        block_col: usize,
+    ) -> Vec<bool> {
         let mut is_digit_used = vec![false; 9];
 
         for i in 0..9 {
@@ -210,8 +217,7 @@ impl Stacks {
                 is_digit_used[col_digit - 1] = true;
             }
 
-            let block_digit =
-                current_state[(block_row * 3 + i / 3) * 9 + (block_col * 3 + i % 3)];
+            let block_digit = current_state[(block_row * 3 + i / 3) * 9 + (block_col * 3 + i % 3)];
             if block_digit > 0 {
                 is_digit_used[block_digit - 1] = true;
             }
@@ -222,7 +228,7 @@ impl Stacks {
     pub fn do_expand(&mut self, rng: &mut ThreadRng, alternate_state: &Board) -> Commands {
         let current_state = match self.last() {
             Some(state) => state.state.clone(),
-            None => alternate_state.clone()
+            None => alternate_state.clone(),
         };
 
         let mut best_row: i32 = -1;
@@ -239,12 +245,10 @@ impl Stacks {
                 let block_row = row / 3;
                 let block_col = col / 3;
 
-                let is_digit_used = Stacks::check_digits_used(&current_state, row, col, block_row, block_col);
+                let is_digit_used =
+                    Stacks::check_digits_used(&current_state, row, col, block_row, block_col);
 
-                let candidates_count = is_digit_used
-                    .iter()
-                    .filter(|used| !**used)
-                    .count() as i32;
+                let candidates_count = is_digit_used.iter().filter(|used| !**used).count() as i32;
 
                 if candidates_count == 0 {
                     contains_unsolvable_cells = true;
@@ -256,7 +260,7 @@ impl Stacks {
                 if best_candidates_count < 0
                     || candidates_count < best_candidates_count
                     || (candidates_count == best_candidates_count
-                    && random_value < best_random_value)
+                        && random_value < best_random_value)
                 {
                     best_row = row as i32;
                     best_col = col as i32;
@@ -273,7 +277,7 @@ impl Stacks {
                 row_index: best_row,
                 col_index: best_col,
                 used_digits: best_used_digits,
-                last_digit: 0
+                last_digit: 0,
             });
         }
 
@@ -290,7 +294,6 @@ pub struct State {
     used_digits: Option<Vec<bool>>,
     last_digit: usize,
 }
-
 
 #[derive(PartialEq)]
 pub enum Commands {

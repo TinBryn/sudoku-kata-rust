@@ -1,10 +1,10 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
+
+pub use board::*;
+pub use lookups::*;
 
 pub mod board;
 pub mod lookups;
-
-pub use lookups::*;
-pub use board::*;
 
 #[derive(Clone)]
 pub struct Grouping<K, T> {
@@ -65,28 +65,28 @@ impl<T> Default for List<T> {
 
 #[derive(Clone)]
 pub struct CellGroup {
-    pub discriminator: i32,
+    pub discriminator: usize,
     pub description: String,
-    pub index: i32,
-    pub row: i32,
-    pub col: i32
+    pub index: usize,
+    pub row: usize,
+    pub col: usize
 }
 
 pub struct TwoDigitMask {
-    pub mask: i32,
+    pub mask: usize,
     pub description: String,
-    pub cells: Grouping<i32, CellGroup>
+    pub cells: Grouping<usize, CellGroup>
 }
 
 pub struct NMaskGroups {
-    pub mask: i32,
+    pub mask: usize,
     pub description: String,
-    pub cells: Grouping<i32, CellGroup>,
+    pub cells: Grouping<usize, CellGroup>,
     pub cells_with_masks: Vec<CellGroup>
 }
 
 impl NMaskGroups {
-    pub fn mask(&self) -> &i32 { &self.mask }
+    pub fn mask(&self) -> &usize { &self.mask }
 }
 
 pub fn group_iter_by_key<I, T, F, K>(vec: I, mapping: F) -> Vec<Grouping<K, T>>
@@ -110,4 +110,11 @@ pub fn group_iter_by_key<I, T, F, K>(vec: I, mapping: F) -> Vec<Grouping<K, T>>
     }
 
     Vec::new()
+}
+
+pub struct Queues {
+    pub index_queue_1: VecDeque<usize>,
+    pub index_queue_2: VecDeque<usize>,
+    pub digit_queue_1: VecDeque<usize>,
+    pub digit_queue_2: VecDeque<usize>,
 }

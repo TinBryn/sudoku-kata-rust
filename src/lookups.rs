@@ -1,4 +1,4 @@
-fn mask_to_ones_count() -> HashMap<i32, i32> {
+fn mask_to_ones_count() -> HashMap<usize, usize> {
     let mut mask_to_ones_count = HashMap::new();
     mask_to_ones_count.insert(0, 0);
     for i in 1..(1 << 9) {
@@ -9,7 +9,7 @@ fn mask_to_ones_count() -> HashMap<i32, i32> {
     mask_to_ones_count
 }
 
-fn single_bit_to_index() -> HashMap<i32, i32> {
+fn single_bit_to_index() -> HashMap<usize, usize> {
     let mut single_bit_to_index = HashMap::new();
     for i in 0..9 {
         single_bit_to_index.insert(1 << i, i);
@@ -17,14 +17,14 @@ fn single_bit_to_index() -> HashMap<i32, i32> {
     single_bit_to_index
 }
 
-fn all_ones() -> i32 { (1 << 9) - 1 }
+fn all_ones() -> usize { (1 << 9) - 1 }
 
 use std::collections::HashMap;
 
 pub struct LookupStructures {
-    mask_to_ones_count: HashMap<i32, i32>,
-    single_bit_to_index: HashMap<i32, i32>,
-    all_ones: i32,
+    mask_to_ones_count: HashMap<usize, usize>,
+    single_bit_to_index: HashMap<usize, usize>,
+    all_ones: usize,
 }
 
 impl Default for LookupStructures {
@@ -41,13 +41,13 @@ impl LookupStructures {
             all_ones: all_ones(),
         }
     }
-    pub fn mask_to_ones_count(&self) -> &HashMap<i32, i32> {
+    pub fn mask_to_ones_count(&self) -> &HashMap<usize, usize> {
         &self.mask_to_ones_count
     }
-    pub fn single_bit_to_index(&self) -> &HashMap<i32, i32> {
+    pub fn single_bit_to_index(&self) -> &HashMap<usize, usize> {
         &self.single_bit_to_index
     }
-    pub fn all_ones(&self) -> i32 {
+    pub fn all_ones(&self) -> usize {
         self.all_ones
     }
 }
