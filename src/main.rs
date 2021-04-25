@@ -38,125 +38,177 @@ mod sudoku_kata {
             let lookups = LookupStructures::new();
             // #endregion
 
-            let mut change_made = true;
-            while change_made {
-                change_made = false;
+            solve_board_displaying_steps(&mut state, &lookups, &mut rng, &final_state);
+        }
+    }
 
-                // #region Calculate candidates for current state of the board
-                let mut candidate_masks = calculate_candidates(&mut state, &lookups);
+    fn solve_board_displaying_steps(
+        state: &mut Board,
+        lookups: &LookupStructures,
+        rng: &mut rand::prelude::ThreadRng,
+        final_state: &Board,
+    ) {
+        let mut change_made = true;
+        while change_made {
+            change_made = false;
+
+            // #region Calculate candidates for current state of the board
+            let mut candidate_masks = calculate_candidates(state, &lookups);
+            // #endregion
+
+            // #region Build a collection (named cellGroups) which maps cell indices into distinct groups (rows/columns/blocks)
+            let cell_groups = build_cell_groups();
+            // #endregion
+
+            let mut step_change_made = true;
+            make_step_change(
+                &mut step_change_made,
+                &mut candidate_masks,
+                &lookups,
+                rng,
+                state,
+                &mut change_made,
+                cell_groups,
+            );
+
+            // #region Final attempt - look if the board has multiple solutions
+            final_attempt_to_make_progress(
+                &mut change_made,
+                &mut candidate_masks,
+                &lookups,
+                state,
+                &final_state,
+                rng,
+            );
+            // #endregion
+
+            if change_made {
+                // #region Print the board as it looks after one change was made to it
+                println!("{}", Board::state_to_printable_board(&state));
+                let code: String = state.code();
+
+                println!("Code: {}", code);
+
+                println!();
                 // #endregion
-
-                // #region Build a collection (named cellGroups) which maps cell indices into distinct groups (rows/columns/blocks)
-                let cell_groups = build_cell_groups();
-                // #endregion
-
-                let mut step_change_made = true;
-                while step_change_made {
-                    step_change_made = false;
-
-                    // #region Pick cells with only one candidate left
-
-                    let single_candidate_indices: Vec<_> = candidate_masks
-                        .iter()
-                        .enumerate()
-                        .map(|(index, mask)| (index, lookups.mask_to_ones_count()[mask]))
-                        .filter(|(_, candidates_count)| *candidates_count == 1)
-                        .map(|(index, _)| index)
-                        .collect();
-
-                    if !single_candidate_indices.is_empty() {
-                        let pick_single_candidate_index =
-                            rng.gen_range(0..single_candidate_indices.len());
-                        let single_candidate_index =
-                            single_candidate_indices[pick_single_candidate_index];
-                        let candidate_mask = candidate_masks[single_candidate_index];
-                        let candidate = lookups.single_bit_to_index()[&candidate_mask];
-
-                        let row = single_candidate_index / 9;
-                        let col = single_candidate_index % 9;
-
-                        state[single_candidate_index] = candidate + 1;
-
-                        candidate_masks[single_candidate_index] = 0;
-                        change_made = true;
-
-                        println!(
-                            "({}, {}) can only contain {}.",
-                            row + 1,
-                            col + 1,
-                            candidate + 1
-                        );
-                    }
-
-                    // #endregion
-
-                    // #region Try to find a number which can only appear in one place in a row/column/block
-
-                    find_number_can_only_be_in_one_place(
-                        &mut change_made,
-                        &mut candidate_masks,
-                        &mut rng,
-                        &mut state,
-                    );
-
-                    // #endregion
-
-                    // #region Try to find pairs of digits in the same row/column/block and remove them from other colliding cells
-                    fun_name(change_made, &mut candidate_masks, &lookups, &cell_groups, &mut step_change_made);
-                    // #endregion
-
-                    // #region Try to find groups of digits of size N which only appear in N cells within row/column/block
-                    // When a set of N digits only appears in N cells within row/column/block, then no other digit can appear in the same set of cells
-                    // All other candidates can then be removed from those cells
-
-                    if !change_made && !step_change_made {
-                        let groups_with_n_masks = get_groups_with_n_masks(
-                            &cell_groups,
-                            &state,
-                            &candidate_masks,
-                            &lookups,
-                        );
-
-                        do_thing_with_n_mask_groups(groups_with_n_masks, &mut candidate_masks);
-                    }
-
-                    // #endregion
-                }
-
-                // #region Final attempt - look if the board has multiple solutions
-                final_attempt_to_make_progress(
-                    &mut change_made,
-                    &mut candidate_masks,
-                    &lookups,
-                    &mut state,
-                    &final_state,
-                    &mut rng,
-                );
-                // #endregion
-
-                if change_made {
-                    // #region Print the board as it looks after one change was made to it
-                    println!("{}", Board::state_to_printable_board(&state));
-                    let code: String = state.code();
-
-                    println!("Code: {}", code);
-
-                    println!();
-                    // #endregion
-                }
             }
         }
     }
 
-    fn fun_name(change_made: bool, candidate_masks: &mut Vec<usize>, lookups: &LookupStructures, cell_groups: &[sudoku_refactor::Grouping<usize, CellGroup>], step_change_made: &mut bool) {
+    fn make_step_change(
+        step_change_made: &mut bool,
+        candidate_masks: &mut Vec<usize>,
+        lookups: &LookupStructures,
+        rng: &mut rand::prelude::ThreadRng,
+        state: &mut Board,
+        change_made: &mut bool,
+        cell_groups: Vec<sudoku_refactor::Grouping<usize, CellGroup>>,
+    ) {
+        while *step_change_made {
+            *step_change_made = false;
+
+            // #region Pick cells with only one candidate left
+            pick_cells_with_one_candidate_left(candidate_masks, lookups, rng, state, change_made);
+            // #endregion
+
+            // #region Try to find a number which can only appear in one place in a row/column/block
+
+            find_number_can_only_be_in_one_place(change_made, candidate_masks, rng, state);
+
+            // #endregion
+
+            // #region Try to find pairs of digits in the same row/column/block and remove them from other colliding cells
+            find_pairs_and_remove_colliding(
+                *change_made,
+                candidate_masks,
+                lookups,
+                &cell_groups,
+                step_change_made,
+            );
+            // #endregion
+
+            // #region Try to find groups of digits of size N which only appear in N cells within row/column/block
+            // When a set of N digits only appears in N cells within row/column/block, then no other digit can appear in the same set of cells
+            // All other candidates can then be removed from those cells
+
+            find_n_groups_and_remove_colliding(
+                *change_made,
+                *step_change_made,
+                &cell_groups,
+                &*state,
+                candidate_masks,
+                lookups,
+            );
+
+            // #endregion
+        }
+    }
+
+    fn pick_cells_with_one_candidate_left(
+        candidate_masks: &mut Vec<usize>,
+        lookups: &LookupStructures,
+        rng: &mut rand::prelude::ThreadRng,
+        state: &mut Board,
+        change_made: &mut bool,
+    ) {
+        let single_candidate_indices: Vec<_> = candidate_masks
+            .iter()
+            .enumerate()
+            .map(|(index, mask)| (index, lookups.mask_to_ones_count()[mask]))
+            .filter(|(_, candidates_count)| *candidates_count == 1)
+            .map(|(index, _)| index)
+            .collect();
+        if !single_candidate_indices.is_empty() {
+            let pick_single_candidate_index = rng.gen_range(0..single_candidate_indices.len());
+            let single_candidate_index = single_candidate_indices[pick_single_candidate_index];
+            let candidate_mask = candidate_masks[single_candidate_index];
+            let candidate = lookups.single_bit_to_index()[&candidate_mask];
+
+            let row = single_candidate_index / 9;
+            let col = single_candidate_index % 9;
+
+            state[single_candidate_index] = candidate + 1;
+
+            candidate_masks[single_candidate_index] = 0;
+            *change_made = true;
+
+            println!(
+                "({}, {}) can only contain {}.",
+                row + 1,
+                col + 1,
+                candidate + 1
+            );
+        }
+    }
+
+    fn find_n_groups_and_remove_colliding(
+        change_made: bool,
+        step_change_made: bool,
+        cell_groups: &[sudoku_refactor::Grouping<usize, CellGroup>],
+        state: &Board,
+        candidate_masks: &mut Vec<usize>,
+        lookups: &LookupStructures,
+    ) {
+        if !change_made && !step_change_made {
+            let groups_with_n_masks =
+                get_groups_with_n_masks(&cell_groups, state, &*candidate_masks, lookups);
+
+            do_thing_with_n_mask_groups(groups_with_n_masks, candidate_masks);
+        }
+    }
+
+    fn find_pairs_and_remove_colliding(
+        change_made: bool,
+        candidate_masks: &mut Vec<usize>,
+        lookups: &LookupStructures,
+        cell_groups: &[sudoku_refactor::Grouping<usize, CellGroup>],
+        step_change_made: &mut bool,
+    ) {
         if !change_made {
             let two_digit_masks = get_two_digit_masks(candidate_masks, lookups);
 
-            let groups = get_groups_of_two_digit_masks(
-                two_digit_masks,
-                cell_groups,
-                candidate_masks,
-            );
+            let groups =
+                get_groups_of_two_digit_masks(two_digit_masks, cell_groups, candidate_masks);
 
             for group in &groups {
                 let cells = group
@@ -203,8 +255,7 @@ mod sudoku_kata {
                     );
 
                     for cell in cells {
-                        let mut mask_to_remove =
-                            candidate_masks[cell.index] & group.mask;
+                        let mut mask_to_remove = candidate_masks[cell.index] & group.mask;
                         let mut values_to_remove = List::new(); // new List<int>();
                         let mut cur_value = 1;
                         while mask_to_remove > 0 {
@@ -238,7 +289,10 @@ mod sudoku_kata {
         }
     }
 
-    fn do_thing_with_n_mask_groups(groups_with_n_masks: Vec<NMaskGroups>, candidate_masks: &mut Vec<usize>) {
+    fn do_thing_with_n_mask_groups(
+        groups_with_n_masks: Vec<NMaskGroups>,
+        candidate_masks: &mut Vec<usize>,
+    ) {
         for group_with_n_masks in groups_with_n_masks {
             let mask = group_with_n_masks.mask;
 
@@ -248,16 +302,13 @@ mod sudoku_kata {
             });
             if cond {
                 let mut message = String::new();
-                message +=
-                    format!("In {} values ", &group_with_n_masks.description)
-                        .as_str();
+                message += format!("In {} values ", &group_with_n_masks.description).as_str();
 
                 append_mask_to_message(&mut message, mask);
 
                 message.push_str(" appear only in cells");
                 for cell in &group_with_n_masks.cells_with_masks {
-                    message +=
-                        format!(" ({}, {})", cell.row + 1, cell.col + 1).as_str();
+                    message += format!(" ({}, {})", cell.row + 1, cell.col + 1).as_str();
                 }
 
                 message.push_str(" and other values cannot appear in those cells.");
@@ -266,8 +317,7 @@ mod sudoku_kata {
             }
 
             for cell in group_with_n_masks.cells_with_masks {
-                let mask_to_clear =
-                    candidate_masks[cell.index] & !group_with_n_masks.mask;
+                let mask_to_clear = candidate_masks[cell.index] & !group_with_n_masks.mask;
                 if mask_to_clear == 0 {
                     continue;
                 }
@@ -488,25 +538,24 @@ mod sudoku_kata {
             let mut stacks = Stacks::new();
 
             let mut command = Commands::Expand;
-            loop {
+            let success = loop {
                 command = match command {
                     Commands::Expand => stacks.do_expand(rng, &alternate_state),
                     Commands::Collapse => {
                         let command = stacks.do_collapse();
 
                         if stacks.is_empty() {
-                            Commands::Fail
+                            break false;
                         } else {
                             command
                         }
                     }
                     Commands::Move => stacks.do_move_2(),
-                    Commands::Complete => break,
-                    Commands::Fail => break,
+                    Commands::Complete => break true,
                 };
-            }
+            };
 
-            if command == Commands::Complete {
+            if success {
                 // Board was solved successfully even with two digits swapped
                 state_index1.add(index1);
                 state_index2.add(index2);
@@ -517,10 +566,7 @@ mod sudoku_kata {
         (state_index1, state_index2, value1, value2)
     }
 
-    fn fill_queues(
-        candidate_masks: &[usize],
-        lookups: &LookupStructures,
-    ) -> Queues {
+    fn fill_queues(candidate_masks: &[usize], lookups: &LookupStructures) -> Queues {
         let mut candidate_index1 = VecDeque::new();
         let mut candidate_index2 = VecDeque::new();
         let mut candidate_digit1 = VecDeque::new();
@@ -723,7 +769,7 @@ mod sudoku_kata {
                 Commands::Expand => stacks.do_expand(rng, &Board::default()),
                 Commands::Collapse => stacks.do_collapse(),
                 Commands::Move => stacks.do_move(),
-                _ => command,
+                _ => unreachable!("This version should not use these variants."),
             };
         }
         stacks.pop().unwrap().state

@@ -301,5 +301,4 @@ pub enum Commands {
     Collapse,
     Move,
     Complete,
-    Fail,
 }
