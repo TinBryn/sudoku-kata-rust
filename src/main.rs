@@ -300,13 +300,13 @@ mod sudoku_kata {
             });
             if cond {
                 let mut message = String::new();
-                message += format!("In {} values ", &group_with_n_masks.description).as_str();
+                message += &format!("In {} values ", group_with_n_masks.description);
 
                 append_mask_to_message(&mut message, mask);
 
                 message.push_str(" appear only in cells");
                 for cell in &group_with_n_masks.cells_with_masks {
-                    message += format!(" ({}, {})", cell.row + 1, cell.col + 1).as_str();
+                    message += &format!(" ({}, {})", cell.row + 1, cell.col + 1);
                 }
 
                 message.push_str(" and other values cannot appear in those cells.");
@@ -326,9 +326,6 @@ mod sudoku_kata {
 
                 append_mask_to_message(&mut message, mask_to_clear);
 
-                // message += format!(" cannot appear in cell ({}, {}).",
-                //                    cell.3 + 1,
-                //                    cell.4 + 1).as_str();
                 println!(
                     "{} cannot appear in cell ({}, {}).",
                     message,
@@ -649,42 +646,62 @@ mod sudoku_kata {
             .collect::<BTreeSet<usize>>()
     }
 
-    fn get_groups_with_n_masks(
-        cell_groups: &[sudoku_refactor::Grouping<usize, CellGroup>],
-        state: &Board,
-        candidate_masks: &[usize],
-        lookups: &LookupStructures,
+    fn get_groups_with_n_masks<'a>(
+        cell_groups: &'a [sudoku_refactor::Grouping<usize, CellGroup>],
+        state: &'a Board,
+        candidate_masks: &'a [usize],
+        lookups: &'a LookupStructures,
     ) -> Vec<NMaskGroups> {
         get_masks(lookups)
-            .map(|mask| {
-                let groups_iter = cell_groups.iter();
-                let filtered_groups = groups_iter.filter(|group| {
-                    group.data.iter().all(|cell| {
-                        state[cell.index] == 0 || (mask & (1 << (state[cell.index] - 1))) == 0
-                    })
-                });
-
-                filtered_groups
-                    .map(|group| NMaskGroups {
-                        mask: *mask,
-                        description: group.data.first().unwrap().description.clone(),
-                        cells: (*group).clone(),
-                        cells_with_masks: group
-                            .data
-                            .iter()
-                            .filter(|cell| {
-                                state[cell.index] == 0 && (candidate_masks[cell.index] & mask) != 0
-                            })
-                            .cloned()
-                            .collect::<Vec<_>>(),
-                    })
-                    .collect::<Vec<_>>()
-            })
+            .map(|mask| find_n_mask_groups(cell_groups, state, *mask, candidate_masks))
             .flatten()
             .filter(|group| {
                 group.cells_with_masks.len() == lookups.mask_to_ones_count()[&group.mask()]
             })
             .collect()
+    }
+
+    fn find_n_mask_groups<'a>(
+        cell_groups: &'a [sudoku_refactor::Grouping<usize, CellGroup>],
+        state: &'a Board,
+        mask: usize,
+        candidate_masks: &'a [usize],
+    ) -> Vec<NMaskGroups> {
+        cell_groups
+            .iter()
+            .filter(|group| has_valid_state_and_mask(group, state, mask))
+            .map(|group| new_n_mask_groups(mask, group, state, candidate_masks))
+            .collect() //todo: this returns owned NMaskGroups which make it difficult to return an iterator with a lifetime specifier
+    }
+
+    fn new_n_mask_groups(
+        mask: usize,
+        group: &sudoku_refactor::Grouping<usize, CellGroup>,
+        state: &Board,
+        candidate_masks: &[usize],
+    ) -> NMaskGroups {
+        NMaskGroups {
+            mask,
+            description: group.data.first().unwrap().description.clone(),
+            cells: (*group).clone(),
+            cells_with_masks: group
+                .data
+                .iter()
+                .filter(|cell| state[cell.index] == 0 && (candidate_masks[cell.index] & mask) != 0)
+                .cloned()
+                .collect::<Vec<_>>(),
+        }
+    }
+
+    fn has_valid_state_and_mask(
+        group: &&sudoku_refactor::Grouping<usize, CellGroup>,
+        state: &Board,
+        mask: usize,
+    ) -> bool {
+        group
+            .data
+            .iter()
+            .all(|cell| state[cell.index] == 0 || (mask & (1 << (state[cell.index] - 1))) == 0)
     }
 
     fn get_masks(lookups: &LookupStructures) -> impl Iterator<Item = &usize> {
@@ -701,7 +718,7 @@ mod sudoku_kata {
 
         while mask_to_clear > 0 {
             if (mask_to_clear & 1) > 0 {
-                *message += format!("{}{}", separator, value_to_clear).as_str();
+                *message += &format!("{}{}", separator, value_to_clear);
                 separator = ", ";
             }
             mask_to_clear >>= 1;
