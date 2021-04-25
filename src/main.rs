@@ -16,7 +16,7 @@ mod sudoku_kata {
             // #region Construct fully populated board
             let final_state = construct_solved_board(&mut rng);
 
-            println!("\nFinal look of the solved board:\n{}",&final_state);
+            println!("\nFinal look of the solved board:\n{}", final_state);
             // #endregion
 
             // #region Generate initial board from the completely solved one
@@ -24,11 +24,10 @@ mod sudoku_kata {
             // Now pick subset of digits as the starting position.
             let mut state = prepare_initial_board_to_solve(&final_state, &mut rng);
 
-            println!("\nStarting look of the board to solve:\n{}", &state);
+            println!("\nStarting look of the board to solve:\n{}", state);
             // #endregion
 
             println!("\n======================================================================\n");
-
 
             // #region Prepare lookup structures that will be used in further execution
             let lookups = LookupStructures::new();
@@ -68,14 +67,17 @@ mod sudoku_kata {
             );
 
             // #region Final attempt - look if the board has multiple solutions
-            final_attempt_to_make_progress(
-                &mut change_made,
-                &mut candidate_masks,
-                &lookups,
-                state,
-                &final_state,
-                rng,
-            );
+
+            if !change_made {
+                change_made = final_attempt_to_make_progress(
+                    &mut candidate_masks,
+                    &lookups,
+                    state,
+                    &final_state,
+                    rng,
+                );
+            }
+
             // #endregion
 
             if change_made {
@@ -441,62 +443,60 @@ mod sudoku_kata {
     }
 
     fn final_attempt_to_make_progress(
-        change_made: &mut bool,
         candidate_masks: &mut Vec<usize>,
         lookups: &LookupStructures,
         state: &mut Board,
         final_state: &Board,
         mut rng: &mut rand::prelude::ThreadRng,
-    ) {
-        if !*change_made {
-            // This is the last chance to do something in this iteration:
-            // If this attempt fails, board will not be entirely solved.
+    ) -> bool {
+        // This is the last chance to do something in this iteration:
+        // If this attempt fails, board will not be entirely solved.
 
-            // Try to see if there are pairs of values that can be exchanged arbitrarily
-            // This happens when board has more than one valid solution
+        // Try to see if there are pairs of values that can be exchanged arbitrarily
+        // This happens when board has more than one valid solution
 
-            let queues = fill_queues(&candidate_masks, &lookups);
+        let queues = fill_queues(&candidate_masks, &lookups);
 
-            // At this point we have the lists with pairs of cells that might pick one of two digits each
-            // Now we have to check whether that is really true - does the board have two solutions?
+        // At this point we have the lists with pairs of cells that might pick one of two digits each
+        // Now we have to check whether that is really true - does the board have two solutions?
 
-            let (state_index1, state_index2, value1, value2) =
-                fill_lists_from_queues(queues, state, &final_state, &mut rng);
+        let (state_index1, state_index2, value1, value2) =
+            fill_lists_from_queues(queues, state, &final_state, &mut rng);
 
-            if !state_index1.data.is_empty() {
-                let pos = rng.gen_range(0..state_index1.data.len());
-                let index1 = state_index1.at(pos);
-                let index2 = state_index2.at(pos);
-                let digit1 = value1.at(pos);
-                let digit2 = value2.at(pos);
-                let row1 = index1 / 9;
-                let col1 = index1 % 9;
-                let row2 = index2 / 9;
-                let col2 = index2 % 9;
+        if !state_index1.data.is_empty() {
+            let pos = rng.gen_range(0..state_index1.data.len());
+            let index1 = state_index1.at(pos);
+            let index2 = state_index2.at(pos);
+            let digit1 = value1.at(pos);
+            let digit2 = value2.at(pos);
+            let row1 = index1 / 9;
+            let col1 = index1 % 9;
+            let row2 = index2 / 9;
+            let col2 = index2 % 9;
 
-                let description;
+            let description;
 
-                if index1 / 9 == index2 / 9 {
-                    description = format!("row #{}", index1 / 9 + 1);
-                } else if index1 % 9 == index2 % 9 {
-                    description = format!("column #{}", index1 % 9 + 1);
-                } else {
-                    description = format!("block ({}, {})", row1 / 3 + 1, col1 / 3 + 1);
-                }
-
-                state[*index1] = final_state[*index1];
-                state[*index2] = final_state[*index2];
-                candidate_masks[*index1] = 0;
-                candidate_masks[*index2] = 0;
-                *change_made = true;
-
-                println!("Guessing that {} and {} are arbitrary in {} (multiple solutions): Pick {}->({}, {}), {}->({}, {}).",
-                         digit1, digit2, description,
-                         final_state[*index1], row1 + 1, col1 + 1,
-                         final_state[*index2], row2 + 1, col2 + 1
-                );
+            if index1 / 9 == index2 / 9 {
+                description = format!("row #{}", index1 / 9 + 1);
+            } else if index1 % 9 == index2 % 9 {
+                description = format!("column #{}", index1 % 9 + 1);
+            } else {
+                description = format!("block ({}, {})", row1 / 3 + 1, col1 / 3 + 1);
             }
+
+            state[*index1] = final_state[*index1];
+            state[*index2] = final_state[*index2];
+            candidate_masks[*index1] = 0;
+            candidate_masks[*index2] = 0;
+
+            println!("Guessing that {} and {} are arbitrary in {} (multiple solutions): Pick {}->({}, {}), {}->({}, {}).",
+                digit1, digit2, description,
+                final_state[*index1], row1 + 1, col1 + 1,
+                final_state[*index2], row2 + 1, col2 + 1
+            );
+            return true;
         }
+        false
     }
 
     fn fill_lists_from_queues(
@@ -655,37 +655,28 @@ mod sudoku_kata {
         candidate_masks: &[usize],
         lookups: &LookupStructures,
     ) -> Vec<NMaskGroups> {
-        let masks = get_masks(lookups);
-
-        masks
-            .iter()
+        get_masks(lookups)
             .map(|mask| {
                 let groups_iter = cell_groups.iter();
-                let filtered_groups: Vec<_> = groups_iter
-                    .filter(|group| {
-                        group.data.iter().all(|cell| {
-                            state[cell.index] == 0 || (mask & (1 << (state[cell.index] - 1))) == 0
-                        })
+                let filtered_groups = groups_iter.filter(|group| {
+                    group.data.iter().all(|cell| {
+                        state[cell.index] == 0 || (mask & (1 << (state[cell.index] - 1))) == 0
                     })
-                    .collect();
+                });
 
                 filtered_groups
-                    .iter()
-                    .map(|group| -> NMaskGroups {
-                        NMaskGroups {
-                            mask: *mask,
-                            description: group.data.first().unwrap().description.clone(),
-                            cells: (*group).clone(),
-                            cells_with_masks: group
-                                .data
-                                .iter()
-                                .filter(|cell| {
-                                    state[cell.index] == 0
-                                        && (candidate_masks[cell.index] & mask) != 0
-                                })
-                                .cloned()
-                                .collect::<Vec<_>>(),
-                        }
+                    .map(|group| NMaskGroups {
+                        mask: *mask,
+                        description: group.data.first().unwrap().description.clone(),
+                        cells: (*group).clone(),
+                        cells_with_masks: group
+                            .data
+                            .iter()
+                            .filter(|cell| {
+                                state[cell.index] == 0 && (candidate_masks[cell.index] & mask) != 0
+                            })
+                            .cloned()
+                            .collect::<Vec<_>>(),
                     })
                     .collect::<Vec<_>>()
             })
@@ -696,14 +687,12 @@ mod sudoku_kata {
             .collect()
     }
 
-    fn get_masks(lookups: &LookupStructures) -> Vec<usize> {
+    fn get_masks(lookups: &LookupStructures) -> impl Iterator<Item = &usize> {
         lookups
             .mask_to_ones_count()
             .iter()
             .filter(|(_, value)| **value > 1)
             .map(|(key, _)| key)
-            .cloned()
-            .collect::<Vec<_>>()
     }
 
     fn append_mask_to_message(message: &mut String, mut mask_to_clear: usize) {
@@ -802,10 +791,10 @@ mod sudoku_kata {
         sudoku_refactor::group_iter_by_key(cell_groups, |tuple| tuple.discriminator)
     }
 
-    fn calculate_candidates(state: &mut Board, lookups: &LookupStructures) -> Vec<usize> {
+    fn calculate_candidates(state: &Board, lookups: &LookupStructures) -> Vec<usize> {
         let mut candidate_masks = vec![0usize; 81];
-        for i in 0..81 {
-            if state[i] == 0 {
+        for (i, cell) in state.iter().enumerate() {
+            if *cell == 0 {
                 let row = i / 9;
                 let col = i % 9;
                 let block_row = row / 3;

@@ -5,7 +5,7 @@ use rand::Rng;
 
 #[derive(Clone)]
 pub struct Board {
-    pub state: Vec<usize>,
+    pub state: [usize; 81],
 }
 
 impl Display for Board {
@@ -55,7 +55,7 @@ impl Display for Board {
 
 impl Board {
     pub fn new() -> Self {
-        Board { state: vec![0; 81] }
+        Board { state: [0; 81] }
     }
 
     pub fn iter(&self) -> Iter<'_, usize> {
