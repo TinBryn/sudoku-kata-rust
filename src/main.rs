@@ -14,25 +14,21 @@ mod sudoku_kata {
             let mut rng = rand::thread_rng();
 
             // #region Construct fully populated board
-            let mut state = construct_solved_board(&mut rng);
+            let final_state = construct_solved_board(&mut rng);
 
-            println!("\nFinal look of the solved board:");
-            println!("{}", Board::state_to_printable_board(&state));
+            println!("\nFinal look of the solved board:\n{}",&final_state);
             // #endregion
 
             // #region Generate initial board from the completely solved one
             // Board is solved at this point.
             // Now pick subset of digits as the starting position.
-            let final_state = prepare_initial_board_to_solve(&mut state, &mut rng);
+            let mut state = prepare_initial_board_to_solve(&final_state, &mut rng);
 
-            println!();
-            println!("Starting look of the board to solve:");
-            println!("{}", Board::state_to_printable_board(&state));
+            println!("\nStarting look of the board to solve:\n{}", &state);
             // #endregion
 
-            println!();
-            println!("======================================================================");
-            println!();
+            println!("\n======================================================================\n");
+
 
             // #region Prepare lookup structures that will be used in further execution
             let lookups = LookupStructures::new();
@@ -84,7 +80,7 @@ mod sudoku_kata {
 
             if change_made {
                 // #region Print the board as it looks after one change was made to it
-                println!("{}", Board::state_to_printable_board(&state));
+                println!("{}", &state);
                 let code: String = state.code();
 
                 println!("Code: {}", code);
@@ -725,14 +721,14 @@ mod sudoku_kata {
     }
 
     fn prepare_initial_board_to_solve(
-        state: &mut Board,
+        final_state: &Board,
         rng: &mut rand::prelude::ThreadRng,
     ) -> Board {
         let remaining_digits = 30;
         let max_removed_per_block = 6;
         let mut removed_per_block = vec![vec![0; 3]; 3];
         let mut positions: Vec<usize> = (0..81).into_iter().collect();
-        let final_state = state.clone();
+        let mut state = final_state.clone();
         let mut removed_pos = 0;
         while removed_pos < 81 - remaining_digits {
             let cur_remaining_digits = 81 - removed_pos;
@@ -758,7 +754,7 @@ mod sudoku_kata {
 
             removed_pos += 1;
         }
-        final_state
+        state
     }
 
     fn construct_solved_board(rng: &mut rand::prelude::ThreadRng) -> Board {
