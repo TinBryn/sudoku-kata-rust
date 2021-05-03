@@ -1,66 +1,73 @@
-use std::slice::Iter;
+use std::{fmt::Display, slice::Iter};
 
 use rand::prelude::ThreadRng;
 use rand::Rng;
 
 #[derive(Clone)]
 pub struct Board {
-    pub state: Vec<usize>,
+    pub state: [usize; 81],
+}
+
+impl Display for Board {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let string = {
+            let line = "+---+---+---+";
+            let middle = "|...|...|...|";
+            let mut board: Vec<Vec<char>> = vec![
+                line.chars().collect(),
+                middle.chars().collect(),
+                middle.chars().collect(),
+                middle.chars().collect(),
+                line.chars().collect(),
+                middle.chars().collect(),
+                middle.chars().collect(),
+                middle.chars().collect(),
+                line.chars().collect(),
+                middle.chars().collect(),
+                middle.chars().collect(),
+                middle.chars().collect(),
+                line.chars().collect(),
+            ];
+    
+            for row in 0..9 {
+                for col in 0..9 {
+                    let row_to_write = row + row / 3 + 1;
+                    let col_to_write = col + col / 3 + 1;
+    
+                    let digit = self[row + 9 * col];
+    
+                    if digit == 0 {
+                        continue;
+                    }
+    
+                    board[row_to_write][col_to_write] = ('0' as usize + digit) as u8 as char;
+                }
+            }
+    
+            let board_argument = &board;
+            let lines = board_argument.iter().map(|v| v.iter().collect::<String>());
+    
+            lines.fold(String::new(), |acc, line| format!("{}\n{}", acc, line))
+        };
+        write!(f, "{}", string)
+    }
 }
 
 impl Board {
     pub fn new() -> Self {
-        Board { state: vec![0; 81] }
+        Board { state: [0; 81] }
     }
 
     pub fn iter(&self) -> Iter<'_, usize> {
         self.state.iter()
     }
 
-    pub fn state_to_printable_board(state: &Board) -> String {
-        let line = "+---+---+---+";
-        let middle = "|...|...|...|";
-        let mut board: Vec<Vec<char>> = vec![
-            line.chars().collect(),
-            middle.chars().collect(),
-            middle.chars().collect(),
-            middle.chars().collect(),
-            line.chars().collect(),
-            middle.chars().collect(),
-            middle.chars().collect(),
-            middle.chars().collect(),
-            line.chars().collect(),
-            middle.chars().collect(),
-            middle.chars().collect(),
-            middle.chars().collect(),
-            line.chars().collect(),
-        ];
-
-        for row in 0..9 {
-            for col in 0..9 {
-                let row_to_write = row + row / 3 + 1;
-                let col_to_write = col + col / 3 + 1;
-
-                let digit = state[row + 9 * col];
-
-                if digit == 0 {
-                    continue;
-                }
-
-                board[row_to_write][col_to_write] = ('0' as usize + digit) as u8 as char;
-            }
-        }
-
-        let board_argument = &board;
-        let lines = board_argument.iter().map(|v| v.iter().collect::<String>());
-
-        lines.fold(String::new(), |acc, line| format!("{}\n{}", acc, line))
-    }
-
     pub fn code(&self) -> String {
         self.iter().map(|i| i.to_string()).collect()
     }
 }
+
+
 
 impl std::ops::Index<usize> for Board {
     type Output = usize;
@@ -301,5 +308,4 @@ pub enum Commands {
     Collapse,
     Move,
     Complete,
-    Fail,
 }
